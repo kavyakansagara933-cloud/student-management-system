@@ -20,7 +20,10 @@ def load_students():
             students = json.load(file)
 
     except (json.JSONDecodeError, OSError):
-        print("Could not load saved students. Starting with an empty list.")
+        print(
+            "Could not load saved students. "
+            "Starting with an empty list."
+        )
         students = []
 
 
@@ -35,18 +38,6 @@ def save_students():
         print("Could not save students.")
 
 
-def show_menu():
-    print("\n" + "=" * 35)
-    print("   STUDENT MANAGEMENT SYSTEM")
-    print("=" * 35)
-    print("1. Add Student")
-    print("2. View Students")
-    print("3. Search Student")
-    print("4. Update Student")
-    print("5. Delete Student")
-    print("6. Exit")
-
-
 def student_id_exists(student_id):
     for student in students:
         if student["id"] == student_id:
@@ -55,39 +46,25 @@ def student_id_exists(student_id):
     return False
 
 
-def add_student():
-    student_id = input("Enter student ID: ").strip()
+def add_student(student_id, name, age, course):
+    student_id = student_id.strip()
+    name = name.strip()
+    course = course.strip()
 
     if not student_id:
-        print("Student ID cannot be empty.")
-        return
+        return False
 
     if student_id_exists(student_id):
-        print("A student with this ID already exists.")
-        return
-
-    name = input("Enter student name: ").strip()
+        return False
 
     if not name:
-        print("Student name cannot be empty.")
-        return
+        return False
 
-    try:
-        age = int(input("Enter student age: ").strip())
-
-        if age <= 0:
-            print("Age must be greater than 0.")
-            return
-
-    except ValueError:
-        print("Please enter a valid age.")
-        return
-
-    course = input("Enter student course: ").strip()
+    if not isinstance(age, int) or age <= 0:
+        return False
 
     if not course:
-        print("Course cannot be empty.")
-        return
+        return False
 
     student = {
         "id": student_id,
@@ -99,7 +76,91 @@ def add_student():
     students.append(student)
     save_students()
 
-    print("\nStudent added successfully!")
+    return True
+
+
+def find_student_by_id(student_id):
+    student_id = student_id.strip()
+
+    for student in students:
+        if student["id"] == student_id:
+            return student
+
+    return None
+
+
+def search_students_by_name(name):
+    name = name.strip().lower()
+
+    if not name:
+        return []
+
+    found_students = []
+
+    for student in students:
+        if name in student["name"].lower():
+            found_students.append(student)
+
+    return found_students
+
+
+def update_student(student_id, field, new_value):
+    student = find_student_by_id(student_id)
+
+    if student is None:
+        return False
+
+    if field == "name":
+        new_value = new_value.strip()
+
+        if not new_value:
+            return False
+
+        student["name"] = new_value
+
+    elif field == "age":
+        if not isinstance(new_value, int) or new_value <= 0:
+            return False
+
+        student["age"] = new_value
+
+    elif field == "course":
+        new_value = new_value.strip()
+
+        if not new_value:
+            return False
+
+        student["course"] = new_value
+
+    else:
+        return False
+
+    save_students()
+    return True
+
+
+def delete_student(student_id):
+    student = find_student_by_id(student_id)
+
+    if student is None:
+        return False
+
+    students.remove(student)
+    save_students()
+
+    return True
+
+
+def show_menu():
+    print("\n" + "=" * 35)
+    print("   STUDENT MANAGEMENT SYSTEM")
+    print("=" * 35)
+    print("1. Add Student")
+    print("2. View Students")
+    print("3. Search Student")
+    print("4. Update Student")
+    print("5. Delete Student")
+    print("6. Exit")
 
 
 def view_students():
@@ -127,7 +188,29 @@ def display_student(student):
     print(f"Course: {student['course']}")
 
 
-def search_student():
+def add_student_menu():
+    student_id = input("Enter student ID: ").strip()
+    name = input("Enter student name: ").strip()
+
+    try:
+        age = int(input("Enter student age: ").strip())
+
+    except ValueError:
+        print("Please enter a valid age.")
+        return
+
+    course = input("Enter student course: ").strip()
+
+    if add_student(student_id, name, age, course):
+        print("\nStudent added successfully!")
+    else:
+        print(
+            "\nCould not add student. "
+            "Check for empty fields, invalid age, or duplicate ID."
+        )
+
+
+def search_student_menu():
     if not students:
         print("\nNo students found.")
         return
@@ -140,21 +223,17 @@ def search_student():
     if choice == "1":
         student_id = input("Enter student ID: ").strip()
 
-        for student in students:
-            if student["id"] == student_id:
-                display_student(student)
-                return
+        student = find_student_by_id(student_id)
 
-        print("Student not found.")
+        if student:
+            display_student(student)
+        else:
+            print("Student not found.")
 
     elif choice == "2":
-        name = input("Enter student name: ").strip().lower()
+        name = input("Enter student name: ").strip()
 
-        found_students = []
-
-        for student in students:
-            if name in student["name"].lower():
-                found_students.append(student)
+        found_students = search_students_by_name(name)
 
         if found_students:
             for student in found_students:
@@ -166,7 +245,7 @@ def search_student():
         print("Invalid search option.")
 
 
-def update_student():
+def update_student_menu():
     if not students:
         print("\nNo students found.")
         return
@@ -175,19 +254,14 @@ def update_student():
         "\nEnter the Student ID to update: "
     ).strip()
 
-    student_to_update = None
+    student = find_student_by_id(student_id)
 
-    for student in students:
-        if student["id"] == student_id:
-            student_to_update = student
-            break
-
-    if student_to_update is None:
+    if student is None:
         print("Student not found.")
         return
 
     print("\nCurrent Student Information:")
-    display_student(student_to_update)
+    display_student(student)
 
     print("\n1. Update Name")
     print("2. Update Age")
@@ -196,46 +270,50 @@ def update_student():
     choice = input("Choose what to update: ").strip()
 
     if choice == "1":
-        new_name = input("Enter new name: ").strip()
+        new_value = input("Enter new name: ")
 
-        if new_name:
-            student_to_update["name"] = new_name
-            save_students()
-            print("Student name updated successfully!")
-        else:
-            print("Name cannot be empty.")
+        success = update_student(
+            student_id,
+            "name",
+            new_value
+        )
 
     elif choice == "2":
         try:
-            new_age = int(
+            new_value = int(
                 input("Enter new age: ").strip()
             )
 
-            if new_age > 0:
-                student_to_update["age"] = new_age
-                save_students()
-                print("Student age updated successfully!")
-            else:
-                print("Age must be greater than 0.")
-
         except ValueError:
             print("Please enter a valid age.")
+            return
+
+        success = update_student(
+            student_id,
+            "age",
+            new_value
+        )
 
     elif choice == "3":
-        new_course = input("Enter new course: ").strip()
+        new_value = input("Enter new course: ")
 
-        if new_course:
-            student_to_update["course"] = new_course
-            save_students()
-            print("Student course updated successfully!")
-        else:
-            print("Course cannot be empty.")
+        success = update_student(
+            student_id,
+            "course",
+            new_value
+        )
 
     else:
         print("Invalid update option.")
+        return
+
+    if success:
+        print("Student updated successfully!")
+    else:
+        print("Invalid update value.")
 
 
-def delete_student():
+def delete_student_menu():
     if not students:
         print("\nNo students found.")
         return
@@ -244,18 +322,10 @@ def delete_student():
         "\nEnter the Student ID to delete: "
     ).strip()
 
-    for student in students:
-        if student["id"] == student_id:
-            students.remove(student)
-            save_students()
-
-            print(
-                f"Student '{student['name']}' "
-                "deleted successfully!"
-            )
-            return
-
-    print("Student not found.")
+    if delete_student(student_id):
+        print("Student deleted successfully!")
+    else:
+        print("Student not found.")
 
 
 def main():
@@ -267,19 +337,19 @@ def main():
         choice = input("\nChoose an option: ").strip()
 
         if choice == "1":
-            add_student()
+            add_student_menu()
 
         elif choice == "2":
             view_students()
 
         elif choice == "3":
-            search_student()
+            search_student_menu()
 
         elif choice == "4":
-            update_student()
+            update_student_menu()
 
         elif choice == "5":
-            delete_student()
+            delete_student_menu()
 
         elif choice == "6":
             print("\nGoodbye!")
